@@ -92,7 +92,7 @@ class AddressBook(UserDict):
                 birthday_date = record.birthday.value.replace(year=today.year)
                 if birthday_date < today:
                     birthday_date = birthday_date.replace(year=today.year + 1)
-                    if  birthday_date >= today and birthday_date < today + timedelta(days=7):
+                    if today <= birthday_date and birthday_date < today + timedelta(days=7):
                         upcoming_birthdays.append(
                             {
                                 "name": record.name.value,
@@ -151,9 +151,10 @@ def change_contact(args, book: AddressBook):
     Updates an existing contact's phone number.
     If such contact does not founded, the function return error.
     """
-    name, new_phone = args
-    if name in book:
-        book[name] = new_phone
+    name, old_phone, new_phone = args
+    record = book.find(name)
+    if record:
+        record.edit_phone(old_phone, new_phone)
         return "Contact updated."
     return "Error: Contact not found."
 
@@ -165,8 +166,10 @@ def show_phone(args, book: AddressBook):
     If such contact does not founded, the function return error.
     """
     name = args[0]
-    if name in book:
-        return book[name]
+    record = book.find(name)
+    if record:
+        phones = ", ".join(p.value for p in record.phones)
+        return f"{name}: {phones}"
     return "Error: Contact not found."
 
 
@@ -175,15 +178,16 @@ def show_all(book: AddressBook):
     """Displays all saved contacts.
     If contacts do not founded, the function return relevant message.
     """
-    if not book:
+    if not book.data:
         return "Contacts not found"
-    return "\n".join(f"{name}: {phone}" for name, phone in book.items())
+    return "\n".join(f"{name}: {phone}" for name in book.data.items())
 
 @input_error
 def add_birthday(args, book: AddressBook):
     name, birthday = args
     record = book.find(name)
     if record:
+        record.add_birthday(birthday)
         return f"Birthday {birthday} added for contact {name}"
     else:
         return "Contact not found"
@@ -193,9 +197,8 @@ def show_birthday(args, book: AddressBook):
     name = args[0]
     record = book.find(name)
     if record and record.birthday:
-        return f"Contact {name} has birthday on {record.birthday.value.strftime("%d.%m.%Y")}"
-    else:
-        return "Contact not found"
+        return f"Contact {name} has birthday on {record.birthday.value.strftime('%d.%m.%Y')}"
+    return "Contact not found"
 
 @input_error
 def birthdays(args, book: AddressBook):
@@ -233,9 +236,9 @@ def main():
             print(show_phone(args, book))
         elif command == "all":
             print(show_all(book))
-        elif command == "add-birthday":
+        elif command == "add birthday":
             print(add_birthday(args, book))
-        elif command == "show-birthday":
+        elif command == "show birthday":
             print(show_birthday(args, book))
         elif command == "birthdays":
             print(birthdays(args, book))
